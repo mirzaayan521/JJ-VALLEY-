@@ -8,9 +8,10 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
         .font-serif { font-family: 'Playfair Display', serif; }
     </style>
 </head>
@@ -18,80 +19,85 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
-        // I have pre-filled your images and details here
-        const HeroImage = "https://lh3.googleusercontent.com/d/1NpQtSuKm63jBwWMKVUBUZ46HPC9OJGsu";
-        const Photo1 = "https://lh3.googleusercontent.com/d/1f58oB8GIRoZJZFSv6E0tFk034X8AQRfy"; 
-        const Photo2 = "https://lh3.googleusercontent.com/d/1wTqifBDDJ0cM-7z9y-y4UJF9TZnkEau3";
-        const Photo3 = "https://lh3.googleusercontent.com/d/1NnvSyiVz4GUBgg2da5WMeWyVyonsNvQ7";
+        // AUTOMATICALLY FILLED FROM YOUR SCREENSHOT
+        const SUPABASE_URL = "https://yhzxiamuipzrjqgomgzu.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_J_iV-7ORy2E1VH5-I5vG-99y6U9E7z3594A5S2E4O7";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const HeroImage = "https://lh3.googleusercontent.com/u/0/d/1f58oB8GIRoZJZFSv6E0tFk034X8AQRfy";
+        const Photo1 = "https://lh3.googleusercontent.com/u/0/d/1NpQtSuKm63jBwWMKVUBUZ46HPC9OJGsu"; 
 
         function App() {
             const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
             const [isAdmin, setIsAdmin] = useState(false);
-            const [booked, setBooked] = useState({});
+            const [bookedData, setBookedData] = useState({});
 
-            const getPrice = (dateStr, type) => {
-                const day = new Date(dateStr).getDay();
-                const isWeekend = (day === 0 || day === 6);
-                if (isWeekend) return type === 'day' ? 8000 : 5000;
-                return type === 'day' ? 6000 : 4500;
+            useEffect(() => { fetchBookings(); }, []);
+
+            const fetchBookings = async () => {
+                const { data } = await supabaseClient.from('bookings').select('*');
+                const map = {};
+                data?.forEach(b => map[b.slot_key] = b.is_booked);
+                setBookedData(map);
             };
 
-            const toggleBook = (type) => {
+            const handleAdmin = () => {
+                if (isAdmin) { setIsAdmin(false); return; }
+                const pin = prompt("Enter Password:");
+                if (pin === "mirza4444") setIsAdmin(true);
+                else alert("Wrong password");
+            };
+
+            const toggleSlot = async (type) => {
                 const key = `${selectedDate}-${type}`;
-                setBooked(prev => ({...prev, [key]: !prev[key]}));
-            };
+                const currentStatus = bookedData[key] || false;
+                const newStatus = !currentStatus;
 
-            const waLink = (type) => {
-                const msg = `Hello JJ Valley! I want to book the ${type} slot for ${selectedDate}.`;
-                return `https://wa.me/917798624444?text=${encodeURIComponent(msg)}`;
-            }
+                const { error } = await supabaseClient
+                    .from('bookings')
+                    .upsert({ slot_key: key, is_booked: newStatus }, { onConflict: 'slot_key' });
+
+                if (!error) setBookedData(prev => ({...prev, [key]: newStatus}));
+            };
 
             return (
-                <div className="bg-[#fcfcfb] min-h-screen pb-20">
-                    {/* Header */}
+                <div className="bg-[#fcfcfb] min-h-screen pb-10">
                     <nav className="p-5 bg-white flex justify-between items-center sticky top-0 z-50 shadow-sm">
-                        <div>
-                            <h1 className="text-xl font-black text-green-900 font-serif">JJ VALLEY</h1>
-                            <p className="text-[8px] tracking-[0.3em] uppercase text-stone-400">Abdimandi, MH</p>
-                        </div>
-                        <button onClick={() => setIsAdmin(!isAdmin)} className="text-[10px] bg-stone-100 px-3 py-1 rounded-full uppercase font-bold text-stone-500">
+                        <h1 className="text-xl font-black text-green-900 font-serif">JJ VALLEY</h1>
+                        <button onClick={handleAdmin} className="text-[10px] bg-stone-100 px-4 py-2 rounded-full font-bold uppercase text-stone-500">
                             {isAdmin ? "🔒 Lock" : "🔓 Admin"}
                         </button>
                     </nav>
 
-                    {/* Hero */}
-                    <div className="h-[50vh] bg-cover bg-center relative flex items-center justify-center text-center" style={{backgroundImage: `url(${HeroImage})`}}>
-                        <div className="absolute inset-0 bg-black/40"></div>
-                        <div className="relative z-10 text-white p-4">
-                            <h2 className="text-4xl font-serif italic mb-2">Luxury Lounging</h2>
-                            <p className="text-sm opacity-90">Experience the serene valley vibes</p>
+                    <div className="h-[40vh] bg-cover bg-center relative" style={{backgroundImage: `url(${HeroImage})`}}>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <h2 className="text-white text-4xl font-serif italic">JJ Valley</h2>
                         </div>
                     </div>
 
-                    {/* Booking */}
                     <div className="max-w-md mx-auto p-6 -mt-10 relative z-20">
-                        <div className="bg-white rounded-[2rem] shadow-2xl p-6 border border-stone-100">
-                            <h3 className="text-xl font-serif font-bold mb-4">Check Availability</h3>
-                            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full p-4 bg-stone-50 rounded-2xl mb-6 font-bold outline-none border-2 border-transparent focus:border-green-800" />
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 border">
+                            <h3 className="text-xl font-bold mb-6 text-stone-800">Check Date</h3>
+                            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full p-4 bg-stone-50 rounded-2xl mb-8 font-bold" />
                             
                             <div className="space-y-4">
                                 {['day', 'night'].map(type => {
-                                    const isFull = booked[`${selectedDate}-${type}`];
+                                    const isFull = bookedData[`${selectedDate}-${type}`];
                                     return (
-                                        <div key={type} className={`p-4 rounded-2xl border-2 flex justify-between items-center ${isFull ? 'bg-red-50 opacity-60' : 'bg-white'}`}>
+                                        <div key={type} className={`p-5 rounded-3xl border-2 flex justify-between items-center ${isFull ? 'bg-red-50 border-red-100' : 'bg-white'}`}>
                                             <div className="text-left">
-                                                <p className="font-bold capitalize text-lg">{type} Slot</p>
-                                                <p className="text-xs text-stone-400 font-bold">₹{getPrice(selectedDate, type)}</p>
+                                                <p className="font-bold capitalize">{type} Slot</p>
+                                                <p className="text-xs text-stone-400 uppercase font-bold tracking-widest">{type === 'day' ? '10am-6pm' : '8pm-8am'}</p>
                                             </div>
                                             {isAdmin ? (
-                                                <button onClick={() => toggleBook(type)} className="text-[10px] font-bold text-blue-600 uppercase underline">
-                                                    {isFull ? 'Available' : 'Mark Full'}
+                                                <button onClick={() => toggleSlot(type)} className="text-[10px] font-bold text-blue-500 uppercase underline">
+                                                    {isFull ? 'Make Available' : 'Mark Full'}
                                                 </button>
                                             ) : (
                                                 isFull ? <span className="text-red-500 font-black text-[10px] uppercase">Booked</span> :
-                                                <a href={waLink(type)} className="bg-green-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase">Book</a>
+                                                <a href={`https://wa.me/917798624444?text=Booking+${type}+${selectedDate}`} className="bg-green-900 text-white px-5 py-2 rounded-full text-[10px] font-bold uppercase">Book</a>
                                             )}
                                         </div>
                                     )
@@ -100,8 +106,9 @@
                         </div>
                     </div>
 
-                    {/* Floating WA */}
-                    <a href="https://wa.me/917798624444" className="fixed bottom-6 right-6 bg-[#25D366] p-4 rounded-full shadow-xl z-50 text-white font-bold">WhatsApp</a>
+                    <div className="p-6 text-center text-stone-400 text-[10px] font-bold tracking-widest uppercase">
+                        © 2026 JJ VALLEY • W6PP+VMF, Abdimandi
+                    </div>
                 </div>
             );
         }
